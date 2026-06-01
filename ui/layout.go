@@ -288,7 +288,7 @@ func (ui *LotteryUI) drawResult(gtx layout.Context) layout.Dimensions {
 				}.Op(gtx.Ops))
 
 			return layout.UniformInset(unit.Dp(16)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				// 使用带格式的文本显示
+				// 使用带格式的文本显示，支持多行
 				label := material.Label(ui.theme, unit.Sp(14), ui.currentResult)
 				label.Color = color.NRGBA{R: 0, G: 150, B: 0, A: 255}
 				return label.Layout(gtx)
@@ -363,8 +363,8 @@ func (ui *LotteryUI) generateDanTuo() {
 		return
 	}
 
-	// 使用专门的胆拖格式化函数显示结果
-	ui.currentResult = logic.FormatDanTuoNumbers(result)
+	// 使用专门的胆拖格式化函数显示结果（带金额）
+	ui.currentResult = logic.FormatDanTuoWithPrice(result)
 	ui.isDanTuoMode = true
 	ui.errorMsg = ""
 }

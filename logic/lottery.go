@@ -1,9 +1,11 @@
 package logic
 
 import (
+	"fmt"
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -163,7 +165,7 @@ func FormatNumbers(front, back []int) string {
 	return str
 }
 
-// 格式化显示胆拖模式
+// 格式化显示胆拖模式（不带金额）
 func FormatDanTuoNumbers(result LotteryResult) string {
 	str := "前区:\n"
 
@@ -204,6 +206,94 @@ func FormatDanTuoNumbers(result LotteryResult) string {
 	}
 
 	return str
+}
+
+// CalculateDanTuoPrice 计算胆拖玩法的金额
+// 返回总注数和总金额（每注2元）
+func CalculateDanTuoPrice(result LotteryResult) (int, int) {
+	// 计算前区组合数：从拖码中选出需要补足的数量
+	frontNeed := FrontCount - len(result.FrontDare)
+	frontCombinations := combination(len(result.FrontDrag), frontNeed)
+
+	// 计算后区组合数：从拖码中选出需要补足的数量
+	backNeed := BackCount - len(result.BackDare)
+	backCombinations := combination(len(result.BackDrag), backNeed)
+
+	// 总注数
+	totalTickets := frontCombinations * backCombinations
+
+	// 总金额（每注2元）
+	totalPrice := totalTickets * 2
+
+	return totalTickets, totalPrice
+}
+
+// combination 计算组合数 C(n, k)
+func combination(n, k int) int {
+	if k < 0 || k > n {
+		return 0
+	}
+	if k == 0 || k == n {
+		return 1
+	}
+
+	// 使用递推公式 C(n, k) = C(n, k-1) * (n - k + 1) / k
+	result := 1
+	for i := 1; i <= k; i++ {
+		result = result * (n - k + i) / i
+	}
+	return result
+}
+
+// FormatDanTuoWithPrice 格式化显示胆拖号码和金额
+func FormatDanTuoWithPrice(result LotteryResult) string {
+	var str strings.Builder
+
+	// 前区
+	str.WriteString("前区:\n")
+
+	// 显示胆码
+	str.WriteString("  胆码: ")
+	for i, num := range result.FrontDare {
+		if i > 0 {
+			str.WriteString("  ")
+		}
+		str.WriteString(formatNumber(num))
+	}
+
+	// 显示拖码
+	str.WriteString("\n  拖码: ")
+	for i, num := range result.FrontDrag {
+		if i > 0 {
+			str.WriteString("  ")
+		}
+		str.WriteString(formatNumber(num))
+	}
+
+	// 后区
+	str.WriteString("\n后区:\n")
+	str.WriteString("  胆码: ")
+	for i, num := range result.BackDare {
+		if i > 0 {
+			str.WriteString("  ")
+		}
+		str.WriteString(formatNumber(num))
+	}
+
+	str.WriteString("\n  拖码: ")
+	for i, num := range result.BackDrag {
+		if i > 0 {
+			str.WriteString("  ")
+		}
+		str.WriteString(formatNumber(num))
+	}
+
+	// 计算并显示金额
+	totalTickets, totalPrice := CalculateDanTuoPrice(result)
+	str.WriteString("\n\n=================================")
+	str.WriteString(fmt.Sprintf("\n共 %d 注，需付款: %d 元", totalTickets, totalPrice))
+
+	return str.String()
 }
 
 func formatNumber(n int) string {
