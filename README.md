@@ -14,3 +14,6 @@
 ```bash
 gogio -target android -appid com.lottery.app -o lottery.apk .
 ```
+
+---
+##### [表准库移动开发](golang.org/x/mobile)
