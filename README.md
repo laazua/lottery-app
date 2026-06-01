@@ -12,7 +12,7 @@
 ---
 ##### 打包
 ```bash
-gogio -target android -appid com.lottery.app -o lottery.apk .
+gogio -target android -appid com.lottery.app -icon lottery.png -o lottery.apk .
 ```
 
 ---

@@ -110,7 +110,7 @@ func (ui *LotteryUI) layout(gtx layout.Context) layout.Dimensions {
 
 func (ui *LotteryUI) drawHeader(gtx layout.Context) layout.Dimensions {
 	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		label := material.H1(ui.theme, "大乐透随机号码生成器")
+		label := material.H6(ui.theme, "大乐透随机号码生成器")
 		label.Color = color.NRGBA{R: 255, G: 100, B: 100, A: 255}
 		return label.Layout(gtx)
 	})
