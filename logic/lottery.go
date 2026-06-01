@@ -20,17 +20,26 @@ const (
 type LotteryResult struct {
 	FrontNumbers []int
 	BackNumbers  []int
-	IsRandomMode bool // true:随机注, false:胆拖
+	IsRandomMode bool  // true:随机注, false:胆拖
+	FrontDare    []int // 前区胆码
+	FrontDrag    []int // 前区拖码
+	BackDare     []int // 后区胆码
+	BackDrag     []int // 后区拖码
+}
+
+// 获取随机数生成器
+func getRand() *rand.Rand {
+	return rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 // 随机生成一注
 func GenerateRandomTicket() LotteryResult {
-	rand.Seed(time.Now().UnixNano())
+	r := getRand()
 
 	// 生成前区
-	front := generateRandomNumbers(FrontMin, FrontMax, FrontCount)
+	front := generateRandomNumbers(r, FrontMin, FrontMax, FrontCount)
 	// 生成后区
-	back := generateRandomNumbers(BackMin, BackMax, BackCount)
+	back := generateRandomNumbers(r, BackMin, BackMax, BackCount)
 
 	return LotteryResult{
 		FrontNumbers: front,
@@ -39,62 +48,94 @@ func GenerateRandomTicket() LotteryResult {
 	}
 }
 
-// 胆拖方式生成
-// frontDare: 前区胆码，frontDrag: 前区拖码
-// backDare: 后区胆码，backDrag: 后区拖码
-func GenerateDanTuoTicket(frontDare, frontDrag, backDare, backDrag []int) []LotteryResult {
-	var results []LotteryResult
-
-	// 验证胆码数量（前区胆码1-4个，后区胆码1个）
-	if len(frontDare) < 1 || len(frontDare) > 4 {
-		return results
+// 随机生成胆拖号码
+// frontDareCount: 前区胆码个数(1-4)
+// frontDragCount: 前区拖码个数(至少需要FrontCount-frontDareCount个)
+// backDareCount: 后区胆码个数(1)
+// backDragCount: 后区拖码个数(至少需要BackCount-backDareCount个)
+func GenerateRandomDanTuo(frontDareCount, frontDragCount, backDareCount, backDragCount int) (LotteryResult, error) {
+	// 验证规则
+	if frontDareCount < 1 || frontDareCount > 4 {
+		return LotteryResult{}, strconv.ErrSyntax
 	}
-	if len(backDare) != 1 {
-		return results
+	if backDareCount != 1 {
+		return LotteryResult{}, strconv.ErrSyntax
 	}
-
-	// 计算需要选择的号码数量
-	frontNeed := FrontCount - len(frontDare)
-	backNeed := BackCount - len(backDare)
-
-	// 从前区拖码中选择frontNeed个号码的组合
-	frontCombos := combinations(frontDrag, frontNeed)
-	// 从后区拖码中选择backNeed个号码的组合
-	backCombos := combinations(backDrag, backNeed)
-
-	// 组合所有可能
-	for _, frontCombo := range frontCombos {
-		for _, backCombo := range backCombos {
-			// 合并胆码和拖码
-			frontNumbers := make([]int, len(frontDare))
-			copy(frontNumbers, frontDare)
-			frontNumbers = append(frontNumbers, frontCombo...)
-			sort.Ints(frontNumbers)
-
-			backNumbers := make([]int, len(backDare))
-			copy(backNumbers, backDare)
-			backNumbers = append(backNumbers, backCombo...)
-			sort.Ints(backNumbers)
-
-			results = append(results, LotteryResult{
-				FrontNumbers: frontNumbers,
-				BackNumbers:  backNumbers,
-				IsRandomMode: false,
-			})
-		}
+	if frontDareCount+frontDragCount < FrontCount {
+		return LotteryResult{}, strconv.ErrSyntax
+	}
+	if backDareCount+backDragCount < BackCount {
+		return LotteryResult{}, strconv.ErrSyntax
 	}
 
-	return results
+	r := getRand()
+
+	// 生成所有可用数字池
+	frontPool := make([]int, FrontMax-FrontMin+1)
+	for i := range frontPool {
+		frontPool[i] = FrontMin + i
+	}
+
+	backPool := make([]int, BackMax-BackMin+1)
+	for i := range backPool {
+		backPool[i] = BackMin + i
+	}
+
+	// 随机打乱
+	r.Shuffle(len(frontPool), func(i, j int) {
+		frontPool[i], frontPool[j] = frontPool[j], frontPool[i]
+	})
+	r.Shuffle(len(backPool), func(i, j int) {
+		backPool[i], backPool[j] = backPool[j], backPool[i]
+	})
+
+	// 选择胆码
+	frontDare := frontPool[:frontDareCount]
+	backDare := backPool[:backDareCount]
+
+	// 从剩余号码中选择拖码
+	remainingFront := frontPool[frontDareCount:]
+	remainingBack := backPool[backDareCount:]
+
+	frontDrag := remainingFront[:frontDragCount]
+	backDrag := remainingBack[:backDragCount]
+
+	// 合并成完整号码
+	frontNumbers := make([]int, len(frontDare))
+	copy(frontNumbers, frontDare)
+	frontNumbers = append(frontNumbers, frontDrag...)
+	sort.Ints(frontNumbers)
+
+	backNumbers := make([]int, len(backDare))
+	copy(backNumbers, backDare)
+	backNumbers = append(backNumbers, backDrag...)
+	sort.Ints(backNumbers)
+
+	// 对胆码和拖码分别排序
+	sort.Ints(frontDare)
+	sort.Ints(frontDrag)
+	sort.Ints(backDare)
+	sort.Ints(backDrag)
+
+	return LotteryResult{
+		FrontNumbers: frontNumbers,
+		BackNumbers:  backNumbers,
+		IsRandomMode: false,
+		FrontDare:    frontDare,
+		FrontDrag:    frontDrag,
+		BackDare:     backDare,
+		BackDrag:     backDrag,
+	}, nil
 }
 
 // 生成不重复的随机数
-func generateRandomNumbers(min, max, count int) []int {
+func generateRandomNumbers(r *rand.Rand, min, max, count int) []int {
 	pool := make([]int, max-min+1)
 	for i := range pool {
 		pool[i] = min + i
 	}
 
-	rand.Shuffle(len(pool), func(i, j int) {
+	r.Shuffle(len(pool), func(i, j int) {
 		pool[i], pool[j] = pool[j], pool[i]
 	})
 
@@ -103,34 +144,7 @@ func generateRandomNumbers(min, max, count int) []int {
 	return result
 }
 
-// 组合数计算（C(n,m)）
-func combinations(nums []int, k int) [][]int {
-	result := [][]int{}
-	if k == 0 {
-		return result
-	}
-	if k > len(nums) {
-		return result
-	}
-
-	var backtrack func(start int, current []int)
-	backtrack = func(start int, current []int) {
-		if len(current) == k {
-			temp := make([]int, len(current))
-			copy(temp, current)
-			result = append(result, temp)
-			return
-		}
-		for i := start; i < len(nums); i++ {
-			backtrack(i+1, append(current, nums[i]))
-		}
-	}
-
-	backtrack(0, []int{})
-	return result
-}
-
-// 格式化显示
+// 格式化显示（普通随机模式）
 func FormatNumbers(front, back []int) string {
 	str := "前区: "
 	for i, num := range front {
@@ -146,6 +160,49 @@ func FormatNumbers(front, back []int) string {
 		}
 		str += formatNumber(num)
 	}
+	return str
+}
+
+// 格式化显示胆拖模式
+func FormatDanTuoNumbers(result LotteryResult) string {
+	str := "前区:\n"
+
+	// 显示胆码
+	str += "   胆码: "
+	for i, num := range result.FrontDare {
+		if i > 0 {
+			str += "  "
+		}
+		str += formatNumber(num)
+	}
+
+	// 显示拖码
+	str += "\n   拖码: "
+	for i, num := range result.FrontDrag {
+		if i > 0 {
+			str += "  "
+		}
+		str += formatNumber(num)
+	}
+
+	// 后区
+	str += "\n后区:\n"
+	str += "   胆码: "
+	for i, num := range result.BackDare {
+		if i > 0 {
+			str += "  "
+		}
+		str += formatNumber(num)
+	}
+
+	str += "\n   拖码: "
+	for i, num := range result.BackDrag {
+		if i > 0 {
+			str += "  "
+		}
+		str += formatNumber(num)
+	}
+
 	return str
 }
 
