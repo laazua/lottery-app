@@ -34,6 +34,15 @@ export PATH=$PATH:$HOME/go/bin
 ```
 
 ---
+##### 开发调试
+```bash
+gogio -target js -o webapp .
+go install github.com/shurcooL/goexec@latest
+# 如果报错：缺少go-goon依赖, 则: go get github.com/shurcooL/go-goon
+goexec 'http.ListenAndServe(":8080", http.FileServer(http.Dir("webapp")))'
+```
+
+---
 ##### 打包
 ```bash
 gogio -target android -appid com.lottery.app -icon lottery.png -o lottery.apk .
