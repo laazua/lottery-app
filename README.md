@@ -49,4 +49,4 @@ gogio -target android -appid com.lottery.app -icon lottery.png -o lottery.apk .
 ```
 
 ---
-##### [表准库移动开发](https://golang.org/x/mobile)
+##### [golang移动开发](https://golang.org/x/mobile)
