@@ -1,9 +1,9 @@
 apk := lottery.apk
 
-.PHONY: clear, build
+.PHONY: clean, build
 
 build:
 	gogio -target android -appid com.lottery.app -icon lottery.png -o $(apk) .
 
-clear:
+clean:
 	rm -f $(apk)*

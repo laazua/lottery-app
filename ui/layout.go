@@ -1,21 +1,29 @@
 package ui
 
 import (
+	"embed"
 	"image"
 	"image/color"
+	"log"
 	"strconv"
 
 	"lottery.app/logic"
 
 	"gioui.org/app"
+	"gioui.org/font/gofont"
+	"gioui.org/font/opentype"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
+
+//go:embed assets/*.otf
+var fontsFS embed.FS
 
 type LotteryUI struct {
 	theme     *material.Theme
@@ -58,7 +66,47 @@ func (ui *LotteryUI) initEditors() {
 }
 
 func (ui *LotteryUI) Run(window *app.Window) error {
+	// 方法：从嵌入的文件系统中读取字体
+	// 先尝试读取可能的字体文件
+	var fontData []byte
+	var err error
+
+	// 尝试常见的字体文件名（根据你实际放置的文件修改）
+	candidates := []string{
+		"assets/SourceHanSans-Regular.otf",
+		"assets/SourceHanSans-Bold.otf",
+		"assets/SourceHanSans-Light.otf",
+		"assets/SourceHanSans-Medium.otf",
+		"assets/SourceHanSans-Heavy.otf",
+		"assets/SourceHanSans-ExtraLight.otf",
+		"assets/SourceHanSans-Normal.otf",
+	}
+
+	for _, candidate := range candidates {
+		fontData, err = fontsFS.ReadFile(candidate)
+		if err == nil {
+			log.Printf("成功加载字体: %s", candidate)
+			break
+		}
+	}
+	if err != nil {
+		log.Printf("未找到字体文件，使用默认字体: %v", err)
+		fontData = nil // 让 text.NewCollection 使用默认字体
+		return err
+	}
+	// 解析字体
+	face, err := opentype.Parse(fontData)
+	if err != nil {
+		log.Printf("解析字体失败，使用默认字体: %v", err)
+		fontData = nil // 让 text.NewCollection 使用默认字体
+		return err
+	}
+	// 创建字体集合并配置主题
+	fontCollection := []text.FontFace{{Face: face}}
 	ui.theme = material.NewTheme()
+	// 为这个主题显式地配置 Go 字体
+	// text.WithCollection 用于指定字体来源，gofont.Collection() 提供了内嵌的 Go 字体
+	ui.theme.Shaper = text.NewShaper(text.WithCollection(append(gofont.Collection(), fontCollection...)))
 	var ops op.Ops
 
 	for {
@@ -93,7 +141,7 @@ func (ui *LotteryUI) layout(gtx layout.Context) layout.Dimensions {
 
 func (ui *LotteryUI) drawHeader(gtx layout.Context) layout.Dimensions {
 	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		label := material.H6(ui.theme, "大乐透随机号码生成器")
+		label := material.H6(ui.theme, "lottery.app")
 		label.Color = color.NRGBA{R: 255, G: 100, B: 100, A: 255}
 		return label.Layout(gtx)
 	})
